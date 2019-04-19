@@ -102,7 +102,13 @@ func missingVariantsInSwitch(
 	}
 	var variantTypes []types.Type
 	for _, expr := range variantExprs {
-		variantTypes = append(variantTypes, pkg.TypesInfo.TypeOf(expr))
+		ty := pkg.TypesInfo.TypeOf(expr)
+		if _, ok := ty.Underlying().(*types.Interface); ok {
+			if !types.Implements(ty, def.Ty) {
+				continue
+			}
+		}
+		variantTypes = append(variantTypes, ty)
 	}
 	return def, def.missing(variantTypes)
 }

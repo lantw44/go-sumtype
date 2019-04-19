@@ -71,6 +71,48 @@ func main() {
 	assert.Equal(t, []string{"B", "C"}, missingNames(t, errs[0]))
 }
 
+// TestMissingInterface tests that we ignore interfaces which don't implement
+// the specified sum type interface.
+func TestMissingInterface(t *testing.T) {
+	code := `
+package main
+
+//go-sumtype:decl T
+
+type T interface {
+	sealed()
+}
+
+type A struct {}
+func (a *A) sealed() {}
+
+type B struct {}
+func (b *B) sealed() {}
+func (b *B) Error() string { return "B" }
+
+type C struct {}
+func (c *C) sealed() {}
+func (c *C) Error() string { return "C" }
+
+func main() {
+	switch T(nil).(type) {
+	case *A, *B, *C:
+	}
+	switch T(nil).(type) {
+	case *A, error:
+	}
+}
+`
+	tmpdir, pkgs := setupPackages(t, code)
+	defer teardownPackage(t, tmpdir)
+
+	errs := run(pkgs)
+	if !assert.Len(t, errs, 1) {
+		t.FailNow()
+	}
+	assert.Equal(t, []string{"B", "C"}, missingNames(t, errs[0]))
+}
+
 // TestMissingOneWithPanic tests that we detect a single missing variant even
 // if we have a trivial default case that panics.
 func TestMissingOneWithPanic(t *testing.T) {
